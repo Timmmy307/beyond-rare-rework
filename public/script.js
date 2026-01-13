@@ -1355,7 +1355,8 @@ async function checkConnection() {
     const data = await response.json();
     isOnline = data.success;
     updateConnectionStatus();
-  } catch {
+  } catch (error) {
+    console.log('Connection check failed:', error);
     isOnline = false;
     updateConnectionStatus();
   }
@@ -1391,6 +1392,8 @@ function updateTimer() {
 
 /******** INITIALIZATION ********/
 async function init() {
+  console.log('Initializing game...');
+  
   loadGameState();
   generateDailyTasks();
   
@@ -1409,11 +1412,28 @@ async function init() {
   // Timer update
   setInterval(updateTimer, 100);
   
-  // Check connection and register
-  await checkConnection();
-  if (isOnline) {
-    await checkUserIdWithServer();
-    await syncStatsToServer();
+  // Set up click button event listener FIRST before any async stuff
+  const clickBtn = document.getElementById('clickButton');
+  if (clickBtn) {
+    clickBtn.addEventListener('click', () => {
+      console.log('Button clicked!');
+      doClick(true);
+    });
+    console.log('Click button initialized');
+  } else {
+    console.error('Click button not found!');
+  }
+  
+  // Check connection and register (don't block on this)
+  try {
+    await checkConnection();
+    if (isOnline) {
+      await checkUserIdWithServer();
+      await syncStatsToServer();
+    }
+  } catch (err) {
+    console.log('Server connection failed, playing locally:', err);
+    isOnline = false;
   }
   
   // Periodic sync
@@ -1425,10 +1445,13 @@ async function init() {
   setInterval(checkConnection, 60000);
   
   checkAchievements();
+  
+  console.log('Game initialized!');
 }
 
-// Set up click button
-document.getElementById('clickButton')?.addEventListener('click', () => doClick(true));
-
-// Initialize
-init();
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
